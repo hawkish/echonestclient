@@ -66,6 +66,7 @@ output a b = mapM_ (\x -> print $ a x) b
 
 readAPIkey :: IO String  
 readAPIkey = do
+           -- This is where I put my apikey. Just a file ma'am.
            content <- readFile "/Users/morten/git/haskell/echonest/apikey.txt" 
            let line = lines content
            return $ head line
@@ -78,21 +79,21 @@ getAPIkey = do
         Left ex  -> return $ "Caught exception: " ++ show ex
         Right val -> return val
 
-
-printArtist :: String -> Int -> IO ()
-printArtist a b  = do
+-- Example: 'searchByArtist "Kenny Rogers" 10' returns 10 Kenny Rogers songtitles. 
+searchByArtist :: String -> Int -> IO ()
+searchByArtist a b  = do
     result <- search a b "artist" 
     case result of
         Left exception -> putStrLn $ show exception
-        Right val -> output artistName $ songs val
+        Right val -> output title $ songs val
            
-
-printTitle :: String -> Int -> IO ()
-printTitle a b  = do
+-- Example: 'searchByTitle "Somewhere over the rainbow" 10' returns 10 artists doing that song. 
+searchByTitle :: String -> Int -> IO ()
+searchByTitle a b  = do
     result <- search a b "title" 
     case result of
         Left exception -> putStrLn $ show exception
-        Right val -> output title $ songs val
+        Right val -> output artistName $ songs val
 
 
 search :: String -> Int -> String -> IO(Either String Response)
