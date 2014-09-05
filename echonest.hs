@@ -5,19 +5,13 @@
 -- import Text.JSON.Generic
 import Network.HTTP (getResponseBody, getRequest, simpleHTTP, urlEncode)
 import Data.List (isInfixOf, or)
--- import Data.Text
 import qualified Data.Text as T
-import System.Environment    
-import System.IO    
-import System.IO.Error
 import Control.Exception
 import Prelude hiding (catch)
 import Data.Aeson
-import Data.Attoparsec hiding (try)
 import Control.Applicative
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Control.Monad
-import GHC.Generics
 
 data Response = Response { status :: Status
                          , songs :: [Song]
@@ -34,7 +28,7 @@ data Song = Song { artistId :: T.Text
                  , title :: T.Text
                  } deriving (Eq, Show)
 
-
+-- Could have used Generics. Decided not to.
 instance FromJSON Response where
          parseJSON (Object v) =
                    Response <$> ((v .: "response") >>= (.: "status"))  
