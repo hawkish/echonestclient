@@ -7,11 +7,15 @@ import Network.HTTP (getResponseBody, getRequest, simpleHTTP, urlEncode)
 import Data.List (isInfixOf, or)
 import qualified Data.Text as T
 import Control.Exception
-import Prelude hiding (catch)
+import Prelude hiding (catch, lookup)
 import Data.Aeson
 import Control.Applicative
 import qualified Data.ByteString.Lazy.Char8 as BS
 import Control.Monad
+import Data.Configurator
+import Data.Configurator.Types
+import Data.Maybe
+
 
 data Response = Response { status :: Status
                          , songs :: [Song]
@@ -58,20 +62,22 @@ output :: Show c => (Song -> c) -> [Song] -> IO()
 output a b = mapM_ (\x -> print $ a x) b 
 
 
-readAPIkey :: IO String  
-readAPIkey = do
-           -- This is where I put my apikey. Just a file ma'am.
-           content <- readFile "/Users/morten/git/haskell/echonest/apikey.txt" 
-           let line = lines content
-           return $ head line
+loadConfigFile :: IO (Either SomeException Config)
+loadConfigFile = do 
+               result <- try (load [Required "/Users/morten/git/echonestclient/app.cfg"]) :: IO (Either SomeException Config)
+               return result
+
 
           
-getAPIkey :: IO String 
-getAPIkey = do
-    result <- try readAPIkey :: IO (Either SomeException String)
+parseAPIkey :: IO (Either String String) 
+parseAPIkey = do
+    result <- loadConfigFile
     case result of
-        Left ex  -> return $ "Caught exception: " ++ show ex
-        Right val -> return val
+        Left ex  -> return $ Left (show ex)
+        Right val -> do
+                  apikey <- lookup val "config.apikey" :: IO (Maybe String)
+                  return $ Right (fromJust apikey)
+
 
 -- Example: 'searchByArtist "Kenny Rogers" 10' returns 10 Kenny Rogers songtitles. 
 searchByArtist :: String -> Int -> IO ()
@@ -93,15 +99,22 @@ searchByTitle a b  = do
 search :: String -> Int -> String -> IO(Either String Response)
 search a b c = do 
    json <- searchRequest a b c
-   let result = eitherDecode (BS.pack json) :: Either String Response
-   return result
+   case json of
+        Left ex -> return $ Left ex
+        Right val -> do
+              let result = eitherDecode (BS.pack val) :: Either String Response
+              return result
 
 
-searchRequest :: String -> Int -> String -> IO String
+searchRequest :: String -> Int -> String -> IO (Either String String)
 searchRequest a b c = do 
-          apikey <- getAPIkey
-          let baseURL = "http://developer.echonest.com/api/v4/song/search?api_key=" ++ apikey ++ "&format=json&results=" ++ show b ++ "&" ++ c ++ "=" 
-          resp <- simpleHTTP $ getRequest $ baseURL ++ urlEncode a
-          body <- getResponseBody resp
-          return body
+          result <- parseAPIkey
+          case result of
+               Left ex -> return $ Left ex
+               Right val -> do
+                     let baseURL = "http://developer.echonest.com/api/v4/song/search?api_key=" ++ val ++ "&format=json&results=" ++ show b ++ "&" ++ c ++ "=" 
+                     resp <- simpleHTTP $ getRequest $ baseURL ++ urlEncode a
+                     body <- getResponseBody resp
+                     return $ Right body
+
 
