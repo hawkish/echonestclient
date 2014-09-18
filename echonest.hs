@@ -58,42 +58,25 @@ instance FromJSON Song where
 
 
 -- Nasty bit of convolution.
-output :: Show c => (Song -> c) -> [Song] -> IO()
-output a b = mapM_ (\x -> print $ a x) b 
+printSearch :: Show c => (Song -> c) -> [Song] -> IO()
+printSearch a b = mapM_ (\x -> print $ a x) b 
 
 
-loadConfigFile :: IO (Either SomeException Config)
-loadConfigFile = do 
-               result <- try (load [Required "/Users/morten/git/echonestclient/app.cfg"]) :: IO (Either SomeException Config)
-               return result
-
-
-          
-parseAPIkey :: IO (Either String String) 
-parseAPIkey = do
-    result <- loadConfigFile
-    case result of
-        Left ex  -> return $ Left (show ex)
-        Right val -> do
-                  apikey <- lookup val "config.apikey" :: IO (Maybe String)
-                  return $ Right (fromJust apikey)
-
-
--- Example: 'searchByArtist "Kenny Rogers" 10' returns 10 Kenny Rogers songtitles. 
-searchByArtist :: String -> Int -> IO ()
-searchByArtist a b  = do
+-- Example: 'searchByArtist "Kenny Rogers" title 10' returns 10 Kenny Rogers songtitles. 
+searchByArtist :: Show c => String -> (Song -> c) -> Int -> IO ()
+searchByArtist a c b  = do
     result <- search a b "artist" 
     case result of
         Left exception -> putStrLn $ show exception
-        Right val -> output title $ songs val
+        Right val -> printSearch c $ songs val
            
--- Example: 'searchByTitle "Somewhere over the rainbow" 10' returns 10 artists doing that song. 
-searchByTitle :: String -> Int -> IO ()
-searchByTitle a b  = do
+-- Example: 'searchByTitle "Somewhere over the rainbow" artistName 10' returns 10 artists doing that song. 
+searchByTitle :: Show c => String -> (Song -> c) -> Int -> IO ()
+searchByTitle a c b  = do
     result <- search a b "title" 
     case result of
         Left exception -> putStrLn $ show exception
-        Right val -> output artistName $ songs val
+        Right val -> printSearch artistName $ songs val
 
 
 search :: String -> Int -> String -> IO(Either String Response)
@@ -118,3 +101,18 @@ searchRequest a b c = do
                      return $ Right body
 
 
+parseAPIkey :: IO (Either String String) 
+parseAPIkey = do
+    result <- loadConfigFile
+    case result of
+        Left ex  -> return $ Left (show ex)
+        Right val -> do
+                  apikey <- lookup val "config.apikey" :: IO (Maybe String)
+                  return $ Right (fromJust apikey)
+
+
+
+loadConfigFile :: IO (Either SomeException Config)
+loadConfigFile = do 
+               result <- try (load [Required "/Users/morten/git/echonestclient/app.cfg"]) :: IO (Either SomeException Config)
+               return result
